@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marquee — Cinema Scheduling &amp; Revenue Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F1E6; --panel:#FFFEFA; --panel-2:#EFE7D6; --ink:#211C17; --sub:#6B6255;
+  --line:#DED2B8; --accent:#8C2E2E; --accent-ink:#FFF6EE; --good:#3F6B4A; --bad:#8C2E2E;
+  --gold:#B98A2B; --base-bar:#B7A98A; --opt-bar:#B98A2B; --radius:10px;
+  --serif:'Fraunces',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17151C; --panel:#1F1C25; --panel-2:#252130; --ink:#F1EAD9; --sub:#A79E8E;
+    --line:#38333F; --accent:#E8A33D; --accent-ink:#1B1610; --good:#7FBF8F; --bad:#E07A6B;
+    --gold:#E8A33D; --base-bar:#5B5566; --opt-bar:#E8A33D;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17151C; --panel:#1F1C25; --panel-2:#252130; --ink:#F1EAD9; --sub:#A79E8E;
+  --line:#38333F; --accent:#E8A33D; --accent-ink:#1B1610; --good:#7FBF8F; --bad:#E07A6B;
+  --gold:#E8A33D; --base-bar:#5B5566; --opt-bar:#E8A33D;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  min-height:100%;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:2.2rem 1.25rem 4rem;}
+h1{font-family:var(--serif); font-weight:700; font-size:clamp(1.9rem,4vw,2.7rem); margin:0 0 .2rem; letter-spacing:-.01em;}
+.tag{color:var(--sub); font-size:.98rem; margin:0 0 1.8rem; max-width:60ch; line-height:1.5;}
+h2{font-family:var(--serif); font-weight:600; font-size:1.3rem; margin:0 0 .9rem;}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:1.2rem 1.3rem; margin-bottom:1.4rem;}
+.theatre-row{display:flex; flex-wrap:wrap; gap:1rem 1.6rem; align-items:flex-end;}
+.field{display:flex; flex-direction:column; gap:.3rem;}
+.field label{font-size:.78rem; color:var(--sub); font-weight:500;}
+input,select{
+  font-family:var(--sans); font-size:.92rem; color:var(--ink); background:var(--panel-2);
+  border:1px solid var(--line); border-radius:6px; padding:.42rem .55rem; width:100%;
+}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--gold); outline-offset:1px;}
+.theatre-row input{width:9ch;}
+.theatre-row .field.wide input{width:16ch;}
+table{width:100%; border-collapse:collapse; font-size:.86rem;}
+th{text-align:left; color:var(--sub); font-weight:500; font-size:.75rem; padding:.3rem .4rem; border-bottom:1px solid var(--line);}
+td{padding:.28rem .4rem; border-bottom:1px solid var(--line); vertical-align:middle;}
+td input,td select{padding:.32rem .4rem; font-size:.85rem;}
+.tbl-scroll{overflow-x:auto;}
+.numcol{width:5.5em;}
+.rmbtn{background:none; border:none; color:var(--bad); cursor:pointer; font-size:1.1rem; line-height:1; padding:.1rem .3rem;}
+.addbtn{margin-top:.7rem; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); padding:.4rem .8rem; border-radius:6px; font-size:.82rem; cursor:pointer;}
+.addbtn:hover{border-color:var(--gold);}
+.generate{
+  display:block; width:100%; background:var(--accent); color:var(--accent-ink); border:none;
+  font-family:var(--serif); font-weight:600; font-size:1.05rem; padding:.85rem 1rem; border-radius:8px;
+  cursor:pointer; margin:1.6rem 0;
+}
+.generate:hover{filter:brightness(1.06);}
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin-bottom:1.2rem;}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:1rem 1.1rem;}
+.card .k{font-size:.74rem; color:var(--sub); text-transform:none;}
+.card .v{font-family:var(--serif); font-size:1.5rem; font-weight:600; margin-top:.15rem;}
+.card .v small{font-family:var(--sans); font-size:.85rem; color:var(--sub); font-weight:400;}
+.banner{
+  border-radius:var(--radius); padding:1rem 1.2rem; margin-bottom:1.4rem; display:flex; justify-content:space-between;
+  align-items:center; gap:1rem; flex-wrap:wrap; border:1px solid var(--line);
+}
+.banner.up{background:color-mix(in srgb, var(--good) 14%, var(--panel));}
+.banner.down{background:color-mix(in srgb, var(--bad) 14%, var(--panel));}
+.banner .big{font-family:var(--serif); font-size:1.7rem; font-weight:700;}
+.tabs{display:flex; gap:.4rem; margin-bottom:.9rem;}
+.tabs button{
+  background:var(--panel); border:1px solid var(--line); color:var(--sub); padding:.45rem .9rem;
+  border-radius:20px; font-size:.85rem; cursor:pointer; font-family:var(--sans);
+}
+.tabs button.active{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+.screen-row{margin-bottom:1rem;}
+.screen-row .label{font-size:.78rem; color:var(--sub); margin-bottom:.3rem; display:flex; justify-content:space-between;}
+.timeline{position:relative; height:44px; background:var(--panel-2); border-radius:6px; overflow:hidden; border:1px solid var(--line);}
+.show-block{
+  position:absolute; top:3px; bottom:3px; border-radius:4px; padding:.2rem .45rem; overflow:hidden;
+  font-size:.72rem; color:var(--accent-ink); cursor:pointer; line-height:1.15; white-space:nowrap;
+}
+.show-block .nm{font-weight:600; display:block;}
+.show-block:hover{filter:brightness(1.1);}
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center;
+  padding:1.2rem; padding-top:calc(1.2rem + env(safe-area-inset-top,0px)); z-index:50;
+}
+.modal-panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1.4rem 1.5rem;
+  max-width:420px; width:100%; max-height:88vh; overflow-y:auto; position:relative;
+}
+.modal-close{position:absolute; top:.9rem; right:.9rem; background:none; border:none; color:var(--sub); font-size:1.1rem; cursor:pointer; padding:.2rem .4rem;}
+.modal-close:hover{color:var(--ink);}
+.modal-panel h3{font-family:var(--serif); font-size:1.3rem; margin:0 0 .2rem; padding-right:1.5rem;}
+.modal-meta{color:var(--sub); font-size:.85rem; margin-bottom:.9rem;}
+.modal-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-bottom:.9rem;}
+.modal-stats .k{display:block; font-size:.7rem; color:var(--sub);}
+.modal-stats .v{display:block; font-family:var(--mono); font-size:1rem; font-weight:600; margin-top:.1rem;}
+.modal-why{font-size:.8rem; color:var(--sub); line-height:1.5; margin-bottom:1.1rem; padding-bottom:1.1rem; border-bottom:1px solid var(--line);}
+.screen-curve{
+  text-align:center; font-size:.65rem; letter-spacing:.25em; color:var(--sub); background:var(--panel-2);
+  border-radius:50% / 8px; padding:.35rem 0; margin-bottom:1rem; box-shadow:0 6px 14px -8px rgba(0,0,0,.4);
+}
+.seat-grid{display:grid; gap:3px; margin-bottom:.9rem;}
+.seat{aspect-ratio:1; min-height:14px; border-radius:3px 3px 5px 5px;}
+.seat-sold{background:var(--gold);}
+.seat-empty{background:var(--panel-2); border:1px solid var(--line);}
+.seat-pad{background:transparent;}
+.seat-legend{display:flex; gap:1.1rem; font-size:.78rem; color:var(--sub);}
+.seat-legend .sw{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:.35rem; vertical-align:middle;}
+.seat-legend .sw.sold{background:var(--gold);}
+.seat-legend .sw.empty{background:var(--panel-2); border:1px solid var(--line);}
+.hidden{display:none;}
+.empty{color:var(--sub); font-size:.85rem; padding:1rem 0;}
+.legend{display:flex; gap:1.1rem; font-size:.78rem; color:var(--sub); margin-bottom:1rem;}
+.legend span::before{content:""; display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:.35rem; vertical-align:middle;}
+.legend .b::before{background:var(--base-bar);}
+.legend .o::before{background:var(--opt-bar);}
+.footnote{color:var(--sub); font-size:.78rem; line-height:1.5; margin-top:2rem; border-top:1px solid var(--line); padding-top:1rem;}
+details summary{cursor:pointer; font-weight:500; color:var(--ink);}
+.perf-tbl td:nth-child(n+3){font-family:var(--mono); font-size:.82rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Marquee</h1>
+  <p class="tag">Build a show schedule against your operating hours, then compare it to a greedy schedule — same movies, same screens, same demand budget. All figures are <strong>expected</strong>, not guaranteed.</p>
+
+  <div class="panel">
+    <h2>Theatre</h2>
+    <div class="theatre-row">
+      <div class="field wide"><label for="tName">Name</label><input id="tName"></div>
+      <div class="field"><label for="tOpen">Opens</label><input id="tOpen" type="time"></div>
+      <div class="field"><label for="tClose">Closes</label><input id="tClose" type="time"></div>
+      <div class="field"><label for="tTurn">Turnaround (min)</label><input id="tTurn" type="number" min="0"></div>
+      <div class="field"><label for="tGrid">Candidate grid (min)</label><input id="tGrid" type="number" min="5" step="5"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Screens</h2>
+    <div class="tbl-scroll"><table id="screenTbl">
+      <thead><tr><th>Name</th><th>Capacity</th><th>Type</th><th>Price ×</th><th>Live</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <button class="addbtn" onclick="addScreen()">+ Add screen</button>
+  </div>
+
+  <div class="panel">
+    <h2>Movies</h2>
+    <div class="tbl-scroll"><table id="movieTbl">
+      <thead><tr><th>Name</th><th>Runtime (min)</th><th>Price ₹</th><th>Demand (1–10)</th><th>Genre</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <button class="addbtn" onclick="addMovie()">+ Add movie</button>
+  </div>
+
+  <p id="inputStatus" role="status" style="color:var(--bad)"></p>
+
+  <button class="generate" onclick="run()">Generate schedule</button>
+
+  <div id="results" class="hidden">
+    <div id="banner"></div>
+    <div class="cards" id="cards"></div>
+
+    <h2>Screen timelines</h2>
+    <div class="legend"><span class="b">Baseline</span><span class="o">Greedy</span></div>
+    <div class="tabs">
+      <button id="tabOpt" class="active" onclick="showTab('opt')">Greedy</button>
+      <button id="tabBase" onclick="showTab('base')">Baseline</button>
+    </div>
+    <div id="timelineOpt"></div>
+    <div id="timelineBase" class="hidden"></div>
+
+    <h2 style="margin-top:1.6rem">Movie performance <small style="font-weight:400;color:var(--sub);font-size:.8rem">(greedy schedule)</small></h2>
+    <div class="tbl-scroll"><table class="perf-tbl">
+      <thead><tr><th>Movie</th><th>Shows</th><th>Avg. occupancy</th><th>Expected viewers</th><th>Expected revenue</th></tr></thead>
+      <tbody id="perfBody"></tbody>
+    </table></div>
+  </div>
+
+  <p class="footnote">
+    <details><summary>How this works</summary>
+    Every show's <strong>expected occupancy</strong> is <code>min(1, (demand/10) × time-of-day factor)</code>
+    — morning ×0.60, afternoon ×0.85, evening/prime ×1.15, late night ×0.75. Expected revenue is
+    <code>capacity × occupancy × price × screen multiplier</code>. The baseline rotates movies onto each
+    screen back-to-back in a fixed order. A movie's daily audience budget is its demand score × 100;
+    both schedules deduct expected viewers after each accepted show. The greedy method repeatedly ranks
+    feasible (movie, screen, start-time) candidates by <strong>current revenue per occupied minute</strong>,
+    accepting the best one without overlap. This is a model assumption, not observed daily ticket demand.
+    It mirrors the C++ engine; greedy does not guarantee the highest possible total revenue.
+    </details>
+  </p>
+</div>
+
+<script>
+// ---------- state ----------
+let theatre = {name:"Revenue Growth Demo", open:600, close:1380, turnaround:15, grid:15};
+let screens = [
+  {id:1,name:"Screen 1 (IMAX)",capacity:280,type:"IMAX",mult:1.4,available:true},
+  {id:2,name:"Screen 2 (Premium)",capacity:200,type:"Premium",mult:1.15,available:true},
+  {id:3,name:"Screen 3",capacity:160,type:"Standard",mult:1.0,available:true},
+  {id:4,name:"Screen 4",capacity:140,type:"Standard",mult:1.0,available:true},
+];
+let movies = [
+  {id:1,name:"Drama",runtime:90,price:250,demand:9,genre:"Drama"},
+  {id:2,name:"Comedy",runtime:120,price:280,demand:10,genre:"Comedy"},
+  {id:3,name:"Action",runtime:150,price:140,demand:5,genre:"Action"},
+  {id:4,name:"Thriller",runtime:170,price:180,demand:2,genre:"Thriller"},
+  {id:5,name:"Family",runtime:130,price:120,demand:3,genre:"Family"}
+];
+let nextScreenId=5, nextMovieId=6, lastResult=null;
+
+// ---------- time helpers ----------
+const fmt=m=>String(Math.floor(m/60)%24).padStart(2,'0')+":"+String(m%60).padStart(2,'0');
+const toMin=s=>{const[h,m]=s.split(':').map(Number);return h*60+m;};
+const toHM=m=>fmt(m);
+
+// ---------- formulas (mirrors algorithms.h) ----------
+function timeOfDayFactor(start){const h=Math.floor(start/60)%24; if(h<12)return .60; if(h<17)return .85; if(h<21)return 1.15; return .75;}
+function occupancy(movie,start){return Math.min(1,(movie.demand/10)*timeOfDayFactor(start));}
+function audience(movie,screen,start){return screen.capacity*occupancy(movie,start);}
+function revenue(movie,screen,start){return audience(movie,screen,start)*movie.price*screen.mult;}
+function rpm(rev,runtime,turn){const occ=runtime+turn; return occ<=0?0:rev/occ;}
+function dailyDemand(movie){return movie.demand*100;}
+function withRemainingDemand(show,movie,screen,remaining){
+  const aud=Math.min(show.aud,remaining);
+  const rev=aud*movie.price*screen.mult;
+  return {...show,aud,occ:aud/screen.capacity,rev,rpm:rpm(rev,movie.runtime,theatre.turnaround)};
+}
+function bucketName(start){const h=Math.floor(start/60)%24; if(h<12)return"morning"; if(h<17)return"afternoon"; if(h<21)return"evening (prime time)"; return"late night";}
+
+function generateCandidates(){
+  const out=[];
+  for(const sc of screens){ if(!sc.available) continue;
+    for(const mv of movies){
+      for(let start=theatre.open; start<=theatre.close; start+=theatre.grid){
+        const end=start+mv.runtime;
+        if(end>theatre.close) break;
+        const rev=revenue(mv,sc,start);
+        out.push({movieId:mv.id,screenId:sc.id,start,end,occ:occupancy(mv,start),aud:audience(mv,sc,start),rev,rpm:rpm(rev,mv.runtime,theatre.turnaround)});
+      }
+    }
+  }
+  return out;
+}
+const conflict=(a,b,t)=>a.start<b.end+t && b.start<a.end+t;
+
+// MERGE SORT: the same ranking rule as backend/algorithms.cpp.
+function comesFirst(a,b){
+  if(a.rpm!==b.rpm)return a.rpm>b.rpm;
+  if(a.rev!==b.rev)return a.rev>b.rev;
+  if(a.occ!==b.occ)return a.occ>b.occ;
+  if(a.start!==b.start)return a.start<b.start;
+  if(a.movieId!==b.movieId)return a.movieId<b.movieId;
+  return a.screenId<b.screenId;
+}
+function sortCandidates(list){
+  if(list.length<2)return list;
+  const middle=Math.floor(list.length/2);
+  const left=sortCandidates(list.slice(0,middle));
+  const right=sortCandidates(list.slice(middle));
+  const result=[];
+  let i=0,j=0;
+  while(i<left.length&&j<right.length){
+    if(comesFirst(right[j],left[i]))result.push(right[j++]);
+    else result.push(left[i++]);
+  }
+  while(i<left.length)result.push(left[i++]);
+  while(j<right.length)result.push(right[j++]);
+  return result;
+}
+function findMovie(id){
+  for(let i=0;i<movies.length;i++)if(movies[i].id===id)return movies[i];
+}
+function runGreedy(candidates){
+  const shows=[],remaining={};
+  for(const movie of movies)remaining[movie.id]=dailyDemand(movie);
+  while(true){
+    const available=[];
+    for(const candidate of candidates){
+      const movie=findMovie(candidate.movieId);
+      if(remaining[movie.id]<=0.000001)continue;
+      const screen=screens.find(s=>s.id===candidate.screenId);
+      available.push(withRemainingDemand(candidate,movie,screen,remaining[movie.id]));
+    }
+    if(!available.length)break;
+    let show=null;
+    for(const candidate of sortCandidates(available)){
+      if(!shows.some(s=>s.screenId===candidate.screenId&&conflict(candidate,s,theatre.turnaround))){
+        show=candidate;break;
+      }
+    }
+    if(!show)break;
+    show.reason='Highest current revenue/minute; screen free and daily viewers remain.';
+    shows.push(show);
+    remaining[show.movieId]-=show.aud;
+  }
+  // Insertion sort accepted shows by screen and start time for display.
+  for(let i=1;i<shows.length;i++){
+    const current=shows[i];let j=i-1;
+    while(j>=0&&(shows[j].screenId>current.screenId||
+      (shows[j].screenId===current.screenId&&shows[j].start>current.start))){shows[j+1]=shows[j];j--;}
+    shows[j+1]=current;
+  }
+  return shows;
+}
+function runBaseline(){
+  const remaining={},shows=[];
+  for(const movie of movies)remaining[movie.id]=dailyDemand(movie);
+  const ordered=screens.slice();
+  for(let i=1;i<ordered.length;i++){
+    const current=ordered[i];let j=i-1;
+    while(j>=0&&ordered[j].id>current.id){ordered[j+1]=ordered[j];j--;}
+    ordered[j+1]=current;
+  }
+  for(let i=0;i<ordered.length;i++){
+    const screen=ordered[i];if(!screen.available)continue;
+    let time=theatre.open,failures=0,front=0;
+    while(failures<movies.length){
+      const movie=movies[front];front=(front+1)%movies.length;
+      const end=time+movie.runtime;
+      if(remaining[movie.id]<=0.000001||end>theatre.close){failures++;continue;}
+      const rev=revenue(movie,screen,time);
+      const show=withRemainingDemand({movieId:movie.id,screenId:screen.id,start:time,end,
+        occ:occupancy(movie,time),aud:audience(movie,screen,time),rev,
+        rpm:rpm(rev,movie.runtime,theatre.turnaround),reason:'Next movie in rotation with remaining daily demand.'},movie,screen,remaining[movie.id]);
+      shows.push(show);
+      remaining[movie.id]-=show.aud;
+      time=end+theatre.turnaround;failures=0;
+    }
+  }
+  return shows;
+}
+
+function metrics(shows){
+  const m={revenue:0,audience:0,shows:shows.length,seatUtil:0,perMovie:{}};
+  let seats=0;
+  const primeS=17*60, primeE=21*60; let filledPrime=0, opMin=0, schedMin=0;
+  for(const sc of screens) if(sc.available) opMin+=(theatre.close-theatre.open);
+  for(const s of shows){
+    m.revenue+=s.rev; m.audience+=s.aud;
+    const sc=screens.find(x=>x.id===s.screenId); if(sc) seats+=sc.capacity;
+    schedMin+=(s.end-s.start);
+    const os=Math.max(s.start,primeS), oe=Math.min(s.end,primeE); if(oe>os) filledPrime+=(oe-os);
+    const mv=movies.find(x=>x.id===s.movieId); const key=s.movieId;
+    m.perMovie[key]=m.perMovie[key]||{name:mv?mv.name:"?",shows:0,aud:0,rev:0,occ:0};
+    m.perMovie[key].shows++; m.perMovie[key].aud+=s.aud; m.perMovie[key].rev+=s.rev; m.perMovie[key].occ+=s.occ;
+  }
+  for(const k in m.perMovie) m.perMovie[k].occ/=m.perMovie[k].shows;
+  m.seatUtil=seats>0?100*m.audience/seats:0;
+  m.screenUtil=opMin>0?100*schedMin/opMin:0;
+  const availScreens=screens.filter(s=>s.available).length;
+  const primeLen=Math.max(0,Math.min(theatre.close,primeE)-Math.max(theatre.open,primeS));
+  const totalPrime=primeLen*availScreens;
+  m.primeUtil=totalPrime>0?100*filledPrime/totalPrime:0;
+  return m;
+}
+
+// ---------- display helpers ----------
+// The website calculates locally. It does not contact a C++ server.
+function run(){
+  readForms();
+  document.getElementById('results').classList.add('hidden');
+  const errors=validateForms();
+  document.getElementById('inputStatus').textContent=errors.join(' ');
+  if(errors.length)return;
+  const candidates=generateCandidates();
+  const base=runBaseline();
+  const opt=runGreedy(candidates);
+  const bm=metrics(base);
+  const om=metrics(opt);
+  const improve=bm.revenue>0?100*(om.revenue-bm.revenue)/bm.revenue:0;
+  lastResult={base,opt,bm,om,improve};
+  renderResults();
+  document.getElementById('results').classList.remove('hidden');
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+function renderResults(){
+  const {bm,om,improve}=lastResult;
+  const up=improve>=0;
+  document.getElementById('banner').innerHTML=`<div class="banner ${up?'up':'down'}">
+    <div><div style="font-size:.8rem;color:var(--sub)">Projected revenue improvement</div>
+    <div class="big" style="color:${up?'var(--good)':'var(--bad)'}">${up?'+':''}${improve.toFixed(2)}%</div></div>
+    <div style="font-size:.85rem;color:var(--sub);max-width:38ch">Baseline ₹${Math.round(bm.revenue).toLocaleString('en-IN')} → Greedy ₹${Math.round(om.revenue).toLocaleString('en-IN')}</div></div>`;
+
+  const card=(k,v,sub)=>`<div class="card"><div class="k">${k}</div><div class="v">${v} ${sub?`<small>${sub}</small>`:''}</div></div>`;
+  document.getElementById('cards').innerHTML=
+    card('Greedy revenue','₹'+Math.round(om.revenue).toLocaleString('en-IN'))+
+    card('Expected viewers',Math.round(om.audience).toLocaleString('en-IN'),`vs ${Math.round(bm.audience).toLocaleString('en-IN')} baseline`)+
+    card('Seat utilization',om.seatUtil.toFixed(1)+'%',`vs ${bm.seatUtil.toFixed(1)}% baseline`)+
+    card('Screen utilization',om.screenUtil.toFixed(1)+'%')+
+    card('Prime-time fill',om.primeUtil.toFixed(1)+'%',`vs ${bm.primeUtil.toFixed(1)}% baseline`)+
+    card('Total shows',om.shows);
+
+  renderTimeline('timelineOpt',lastResult.opt,'opt');
+  renderTimeline('timelineBase',lastResult.base,'base');
+
+  const rows=Object.values(om.perMovie).sort((a,b)=>b.rev-a.rev).map(p=>
+    `<tr><td>${p.name}</td><td>${p.shows}</td><td>${Math.round(p.occ*100)}%</td><td>${Math.round(p.aud).toLocaleString('en-IN')}</td><td>₹${Math.round(p.rev).toLocaleString('en-IN')}</td></tr>`).join('');
+  document.getElementById('perfBody').innerHTML=rows||'<tr><td colspan="5" class="empty">No shows scheduled.</td></tr>';
+}
+
+function renderTimeline(elId,shows,kind){
+  const el=document.getElementById(elId);
+  const span=theatre.close-theatre.open;
+  if(!screens.length){el.innerHTML='<p class="empty">No screens configured.</p>';return;}
+  let html='';
+  for(const sc of screens){
+    const own=shows.filter(s=>s.screenId===sc.id);
+    html+=`<div class="screen-row"><div class="label"><span>${sc.name}</span><span>${own.length} show${own.length===1?'':'s'}</span></div><div class="timeline">`;
+    for(const s of own){
+      const left=100*(s.start-theatre.open)/span, width=100*(s.end-s.start)/span;
+      const mv=movies.find(m=>m.id===s.movieId);
+      html+=`<div class="show-block" style="left:${left}%;width:${width}%;background:var(--${kind==='opt'?'opt':'base'}-bar)"
+        onclick="showDetail(${sc.id},${s.movieId},${s.start},${s.end},${s.aud},${s.rev},${s.occ},'${(s.reason||'').replace(/'/g,"\\'")}')">
+        <span class="nm">${mv?mv.name:'?'}</span>${fmt(s.start)}</div>`;
+    }
+    html+='</div></div>';
+  }
+  el.innerHTML=html||'<p class="empty">No shows scheduled.</p>';
+}
+
+// ---------- seat map ----------
+// Reuses the project's own merge-sort algorithm (same one the backend uses
+// to rank candidates) to order seats "best first" -- rows/columns closest
+// to the screen's horizontal and vertical center rank highest, exactly how
+// real ticket buyers tend to pick seats. The seating chart itself is a
+// plain 2D array (grid[row][col]), filled with 'sold' for as many seats as
+// the show's expected audience, 'empty' for the rest.
+function mergeSortJS(arr, less) {
+  if (arr.length <= 1) return arr;
+  const mid = arr.length >> 1;
+  const left = mergeSortJS(arr.slice(0, mid), less), right = mergeSortJS(arr.slice(mid), less);
+  const out = []; let i = 0, j = 0;
+  while (i < left.length && j < right.length) out.push(less(right[j], left[i]) ? right[j++] : left[i++]);
+  while (i < left.length) out.push(left[i++]);
+  while (j < right.length) out.push(right[j++]);
+  return out;
+}
+function buildSeatGrid(capacity, sold) {
+  const cols = Math.max(8, Math.round(Math.sqrt(capacity * 1.8)));
+  const rows = Math.ceil(capacity / cols);
+  let seats = [], n = 0;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (n >= capacity) continue;
+    const rowDist = Math.abs(r - (rows - 1) / 2), colDist = Math.abs(c - (cols - 1) / 2);
+    seats.push({ r, c, score: rowDist * 1.5 + colDist }); n++;
+  }
+  seats = mergeSortJS(seats, (a, b) => a.score < b.score); // best (most central) seats first
+  const soldSet = new Set(seats.slice(0, sold).map(s => s.r + ',' + s.c));
+  const grid = Array.from({ length: rows }, () => new Array(cols).fill(null));
+  for (const s of seats) grid[s.r][s.c] = soldSet.has(s.r + ',' + s.c) ? 'sold' : 'empty';
+  return { grid, rows, cols };
+}
+
+function showDetail(screenId, movieId, start, end, aud, rev, occ, reason) {
+  const sc = screens.find(s => s.id === screenId), mv = movies.find(m => m.id === movieId);
+  const capacity = sc ? sc.capacity : 0;
+  const sold = Math.min(capacity, Math.round(aud));
+  const { grid, rows, cols } = buildSeatGrid(capacity, sold);
+
+  let seatHtml = `<div class="seat-grid" style="grid-template-columns:repeat(${cols},1fr)">`;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const v = grid[r][c];
+    seatHtml += v ? `<span class="seat seat-${v}" title="Row ${r+1}, Seat ${c+1} — ${v==='sold'?'projected occupied':v}"></span>` : `<span class="seat seat-pad"></span>`;
+  }
+  seatHtml += '</div>';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal-panel">
+    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" aria-label="Close">✕</button>
+    <h3>${mv ? mv.name : '?'}</h3>
+    <div class="modal-meta">${sc ? sc.name : ''} · ${fmt(start)}–${fmt(end)}</div>
+    <div class="modal-stats">
+      <div><span class="k">Projected occupied seats</span><span class="v">${sold} / ${capacity}</span></div>
+      <div><span class="k">Occupancy</span><span class="v">${Math.round(occ*100)}%</span></div>
+      <div><span class="k">Revenue</span><span class="v">₹${Math.round(rev).toLocaleString('en-IN')}</span></div>
+    </div>
+    <div class="modal-why">${reason || ''}</div>
+    <div class="screen-curve">SCREEN</div>
+    ${seatHtml}
+    <div class="seat-legend"><span><i class="sw sold"></i> Sold</span><span><i class="sw empty"></i> Available</span></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); } });
+}
+
+function showTab(which){
+  document.getElementById('tabOpt').classList.toggle('active',which==='opt');
+  document.getElementById('tabBase').classList.toggle('active',which==='base');
+  document.getElementById('timelineOpt').classList.toggle('hidden',which!=='opt');
+  document.getElementById('timelineBase').classList.toggle('hidden',which!=='base');
+}
+
+// ---------- forms ----------
+const TYPE_MULTIPLIERS = {Standard:1.0, Premium:1.15, IMAX:1.3, '4DX':1.45};
+function onScreenTypeChange(i, type){
+  screens[i].type = type;
+  screens[i].mult = TYPE_MULTIPLIERS[type] ?? screens[i].mult; // auto-default, still editable after
+  renderScreenTbl();
+}
+function addScreen(){screens.push({id:nextScreenId++,name:"New Screen",capacity:150,type:"Standard",mult:TYPE_MULTIPLIERS.Standard,available:true});renderScreenTbl();}
+function addMovie(){
+  const runtime=120;
+  movies.push({id:nextMovieId++,name:"New Movie",runtime,price:180,demand:5,genre:""});
+  renderMovieTbl();
+}
+
+function renderScreenTbl(){
+  const tb=document.querySelector('#screenTbl tbody');
+  tb.innerHTML=screens.map((s,i)=>`<tr>
+    <td><input value="${s.name}" oninput="screens[${i}].name=this.value"></td>
+    <td><input class="numcol" type="number" min="1" value="${s.capacity}" oninput="screens[${i}].capacity=+this.value"></td>
+    <td><select onchange="onScreenTypeChange(${i},this.value)">
+      ${Object.keys(TYPE_MULTIPLIERS).map(t=>`<option value="${t}" ${s.type===t?'selected':''}>${t}</option>`).join('')}
+    </select></td>
+    <td><input class="numcol" type="number" min="1" step="0.05" value="${s.mult}" oninput="screens[${i}].mult=+this.value" title="Auto-filled from screen type; edit to override"></td>
+    <td><input type="checkbox" ${s.available?'checked':''} onchange="screens[${i}].available=this.checked"></td>
+    <td><button class="rmbtn" onclick="screens.splice(${i},1);renderScreenTbl()" aria-label="Remove screen">✕</button></td>
+  </tr>`).join('');
+}
+function renderMovieTbl(){
+  const tb=document.querySelector('#movieTbl tbody');
+  tb.innerHTML=movies.map((m,i)=>`<tr>
+    <td><input value="${m.name}" oninput="movies[${i}].name=this.value"></td>
+    <td><input class="numcol" type="number" min="1" value="${m.runtime}" oninput="movies[${i}].runtime=+this.value"></td>
+    <td><input class="numcol" type="number" min="1" value="${m.price}" oninput="movies[${i}].price=+this.value"></td>
+    <td><input class="numcol" type="number" min="1" max="10" value="${m.demand}" oninput="movies[${i}].demand=+this.value"></td>
+    <td><input value="${m.genre}" oninput="movies[${i}].genre=this.value"></td>
+    <td><button class="rmbtn" onclick="movies.splice(${i},1);renderMovieTbl()" aria-label="Remove movie">✕</button></td>
+  </tr>`).join('');
+}
+function readForms(){
+  theatre.name=document.getElementById('tName').value||"Cinema";
+  theatre.open=toMin(document.getElementById('tOpen').value||"09:00");
+  theatre.close=toMin(document.getElementById('tClose').value||"23:59")||1439;
+  if(document.getElementById('tClose').value==="00:00") theatre.close=1440;
+  theatre.turnaround=+document.getElementById('tTurn').value||0;
+  theatre.grid=+document.getElementById('tGrid').value;
+}
+// Validate before either scheduler starts: prevents zero-runtime/grid loops.
+function validateForms(){
+  const errors=[];
+  if(theatre.open<0||theatre.close>1440||theatre.close<=theatre.open)errors.push('Check opening/closing times.');
+  if(!Number.isInteger(theatre.grid)||theatre.grid<5||theatre.grid>1440)errors.push('Grid must be 5-1440 minutes.');
+  if(!Number.isInteger(theatre.turnaround)||theatre.turnaround<0||theatre.turnaround>1440)errors.push('Turnaround must be 0-1440.');
+  if(screens.length<1||screens.length>20||!screens.some(s=>s.available))errors.push('Enable 1-20 screens.');
+  if(movies.length<1||movies.length>50)errors.push('Enter 1-50 movies.');
+  for(const s of screens)if(!Number.isInteger(s.capacity)||s.capacity<1||s.capacity>10000||!Number.isFinite(s.mult)||s.mult<1||s.mult>100)errors.push('Check screen capacity and price multiplier.');
+  for(const m of movies)if(!Number.isInteger(m.runtime)||m.runtime<1||m.runtime>theatre.close-theatre.open||!Number.isFinite(m.price)||m.price<=0||m.price>1000000||!Number.isInteger(m.demand)||m.demand<1||m.demand>10)errors.push('Check movie runtime, price and demand.');
+  return errors;
+}
+function initForms(){
+  document.getElementById('tName').value=theatre.name;
+  document.getElementById('tOpen').value=toHM(theatre.open);
+  document.getElementById('tClose').value=theatre.close===1440?'00:00':toHM(theatre.close);
+  document.getElementById('tTurn').value=theatre.turnaround;
+  document.getElementById('tGrid').value=theatre.grid;
+  renderScreenTbl(); renderMovieTbl();
+}
+initForms();
+</script>
+</body>
+</html>
